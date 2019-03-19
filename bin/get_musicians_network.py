@@ -3,11 +3,13 @@ import json
 import requests
 import time
 
+# https://www.imdb.com/list/ls059445864/
+
 SEEDS_FILE = "seeds.json"
 
 FILE_OUT = "artist_network.json"
 
-MAX_DEPTH = 2
+MAX_DEPTH = 3
 SLEEP_INTERVAL = 2
 
 network = {}
@@ -81,34 +83,38 @@ while depth < MAX_DEPTH:
 
                 retrieved += 1
 
-                my_data = r.json()
+                try:
 
-                print("Retrieved page: ", url)
+                    my_data = r.json()
 
-                source = get_name_from_source(url)
+                    print("Retrieved page: ", url)
 
-                for primary_key, primary_value in my_data.items():
+                    source = get_name_from_source(url)
 
-                    # print("-", primary_key)
+                    for primary_key, primary_value in my_data.items():
 
-                    # if type(primary_value) == 'dict':
-                    #     print("-", primary_key, type(primary_value))
-                    # print("-", primary_key, type(primary_value))
-                    for secondary_key, secondary_value in primary_value.items():
-                        # print("\t", secondary_key)
+                        # print("-", primary_key)
 
-                        if secondary_key == "http://dbpedia.org/ontology/associatedMusicalArtist":
-                            for entry in secondary_value:
-                                insert_in_network(primary_key, entry['value'])
-                                if get_visit_from_url(primary_key) not in visited:
-                                    new_visits[get_visit_from_url(primary_key)] = True
+                        # if type(primary_value) == 'dict':
+                        #     print("-", primary_key, type(primary_value))
+                        # print("-", primary_key, type(primary_value))
+                        for secondary_key, secondary_value in primary_value.items():
+                            # print("\t", secondary_key)
+
+                            if secondary_key == "http://dbpedia.org/ontology/associatedMusicalArtist":
+                                for entry in secondary_value:
+                                    insert_in_network(primary_key, entry['value'])
+                                    if get_visit_from_url(primary_key) not in visited:
+                                        new_visits[get_visit_from_url(primary_key)] = True
+                except Exception:
+                    print("Casquotazo")
 
 
             else:
 
                 print("Error retrieving page: ", url)
 
-            json.dump(network, open(FILE_OUT, "w"), indent = 4)
+            json.dump({'network': network, 'visited': [key for key in visited.keys()]}, open(FILE_OUT, "w"), indent = 4)
 
             # mark as visited
 
