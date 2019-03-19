@@ -77,7 +77,7 @@ while depth < MAX_DEPTH:
 
             r = requests.get(url)
 
-            if r.status_code == 200 :
+            if r.status_code == 200:
 
                 retrieved += 1
 
@@ -100,7 +100,8 @@ while depth < MAX_DEPTH:
                         if secondary_key == "http://dbpedia.org/ontology/associatedMusicalArtist":
                             for entry in secondary_value:
                                 insert_in_network(primary_key, entry['value'])
-                                new_visits[get_visit_from_url(primary_key)] = True
+                                if get_visit_from_url(primary_key) not in visited:
+                                    new_visits[get_visit_from_url(primary_key)] = True
 
 
             else:
