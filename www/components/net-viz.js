@@ -18,23 +18,30 @@ AFRAME.registerComponent('net-viz', {
 
       init: function () {
 
+          console.log("INIT NET VIZ");
+          console.log("LOADING FILE");
+
+          // Load new data
+
+        d3.json(this.data.data).then(tree_data => {
+
+            // Set cursor and controllers based on HMD connected (desktop, cardboard, vive, oculus + oculus go)
+
+            //AFRAME.UIPACK.utils.set_cursor(self.el.sceneEl, 'light');
+
+            console.log("LOADED DATA", tree_data);
+
+        })
+        .catch(error => {
+            console.log("ERROR GETTING TREE DATA", error, this.data.data);
+        });
+
+
       },
 
       update: function (oldData) {
 
         console.log("UPDATING NETVIZ", this.data, d3);
-          // Load new data
-
-        // d3.json(self.data.data).then(tree_data => {
-        //
-        //     // Set cursor and controllers based on HMD connected (desktop, cardboard, vive, oculus + oculus go)
-        //
-        //     AFRAME.UIPACK.utils.set_cursor(self.el.sceneEl, 'light');
-        //
-        // })
-        // .catch(error => {
-        //     console.log("ERROR GETTING TREE DATA", error, self.data.data);
-        // });
 
       },
 
