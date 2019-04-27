@@ -5,6 +5,7 @@ AFRAME.registerComponent('net-viz', {
       schema: {
           data: {type: 'string', default: ""},
           radius: {type: 'number', default: 10},
+          initial_min_degree: {type: 'number', default: 50},
           max_depth: {type: 'number', default: 2},
           bottom_radius: {type: 'number', default: 1},
           num_points: {type: 'int', default: 100},
@@ -15,21 +16,133 @@ AFRAME.registerComponent('net-viz', {
           frame_background_color: {type: 'string', default:"white"},
 
       },
+      // Make some data transforms to ease up later real-time data processing on the network
+
+      prepare_data: function(){
+
+          this.filters = {'values': {degree:[]}, 'domains': {degree: []}};
+
+          if(this.net_data){
+
+              let max_min = {x: [], y: []};
+
+              // Prepare node dictionary, also filter domains
+
+              this.net_data.nodes.map(node => {
+                  this.node_dict[node.id] = node;
+
+                  max_min.x.push(node.x);
+                  max_min.y.push(node.y);
+
+                  this.filters.domains.degree.push(+node.attributes.Degree);
+
+              });
+
+              // Insert degree domains + degree values
+
+              this.filters.domains.degree = d3.extent(this.filters.domains.degree);
+
+              this.filters.values.degree = [this.data.initial_min_degree, this.filters.domains.degree[1]];
+
+
+              // Set global extents
+
+              this.extents = {x: d3.extent(max_min.x), y: d3.extent(max_min.y)};
+
+              // Substitute edge source and target with real data
+
+              this.net_data.edges.map(edge => {
+
+                  edge.source = (edge.source in this.node_dict) ? this.node_dict[edge.source] : null;
+
+                  edge.target = (edge.target in this.node_dict) ? this.node_dict[edge.target] : null;
+
+              });
+
+          }
+
+          console.log("PREPARED DATA", this.node_dict, this.net_data, Object.keys(this.node_dict).length, this.filters);
+
+          // Object.entries(this.node_dict).map(([a,b]) => console.log(a,b));
+      },
+
+     // spherical to cartesian
+
+     convert: function(lat, long, radius){
+
+              var cosPhi = Math.cos(lat/180 * Math.PI);
+
+              return {
+                  x: radius * cosPhi * Math.cos(long/180 * Math.PI),
+                  y: radius * Math.sin(lat/180 * Math.PI),
+                  z: radius * cosPhi * Math.sin(long/180 * Math.PI),
+              }
+
+      },
+
+      // Filter node by conditions selected on UI
+
+      filter_node: function(node){
+
+          // Degree condition
+
+          if((+node.attributes.Degree >= this.filters.values.degree[0]) && (+node.attributes.Degree <= this.filters.values.degree[1])){
+              return true;
+          }
+          else {
+              return false;
+          }
+
+      },
+
+      render_nodes: function(){
+
+          console.log("RENDER_NODES", this.extents);
+
+          let lat_scale = d3.scaleLinear(this.extents.x,[-90, 90]);
+          let long_scale = d3.scaleLinear(this.extents.x,[-180, 180]);
+
+          // Render nodes one by one
+
+          Object.values(this.node_dict).map(node => {
+
+              if(this.filter_node(node)){
+                  console.log("RENDER_NODES: PASA LA CONDICION", node);
+              }
+
+          });
+
+
+
+
+
+
+      },
 
       init: function () {
 
-          console.log("INIT NET VIZ");
-          console.log("LOADING FILE");
+          console.log("INIT: ");
+          console.log("INIT: LOADING FILE");
+
+          // This object will hold nodes keyed by id
+
+          this.node_dict = {};
 
           // Load new data
 
-        d3.json(this.data.data).then(tree_data => {
+         d3.json(this.data.data).then(net_data => {
 
             // Set cursor and controllers based on HMD connected (desktop, cardboard, vive, oculus + oculus go)
 
             //AFRAME.UIPACK.utils.set_cursor(self.el.sceneEl, 'light');
 
-            console.log("LOADED DATA", tree_data);
+            console.log("LOADED DATA PAPOLLA", net_data);
+
+            this.net_data = net_data;
+
+            this.prepare_data();
+
+            this.update();
 
         })
         .catch(error => {
@@ -41,7 +154,16 @@ AFRAME.registerComponent('net-viz', {
 
       update: function (oldData) {
 
-        console.log("UPDATING NETVIZ", this.data, d3);
+        console.log("UPDATE:", this.data, d3);
+
+        if(Object.keys(this.node_dict).length === 0){
+            console.log("UPDATE: No cooked data");
+        }
+        else {
+            console.log("UPDATE: Have cooked data");
+
+            this.render_nodes();
+        }
 
       },
 
