@@ -6,6 +6,9 @@ AFRAME.registerComponent('net-viz', {
           data: {type: 'string', default: ""},
           radius: {type: 'number', default: 10},
           initial_min_degree: {type: 'number', default: 50},
+          size_attribute: {type: 'string', default: "Degree"},
+          node_size_range: {type: 'array', default: [0.01, 0.10]},
+          node_color_range: {type: 'array', default: ["#F00", "#FFF", "#00F"]},
           max_depth: {type: 'number', default: 2},
           bottom_radius: {type: 'number', default: 1},
           num_points: {type: 'int', default: 100},
@@ -20,7 +23,7 @@ AFRAME.registerComponent('net-viz', {
 
       prepare_data: function(){
 
-          this.filters = {'values': {degree:[]}, 'domains': {degree: []}};
+          this.filters = {'values': {degree:[], size: []}, 'domains': {degree: [], size: []}};
 
           if(this.net_data){
 
@@ -35,12 +38,14 @@ AFRAME.registerComponent('net-viz', {
                   max_min.y.push(node.y);
 
                   this.filters.domains.degree.push(+node.attributes.Degree);
+                  this.filters.domains.size.push(+node.attributes[this.data.size_attribute]);
 
               });
 
               // Insert degree domains + degree values
 
               this.filters.domains.degree = d3.extent(this.filters.domains.degree);
+              this.filters.domains.size = d3.extent(this.filters.domains.size);
 
               this.filters.values.degree = [this.data.initial_min_degree, this.filters.domains.degree[1]];
 
@@ -101,13 +106,30 @@ AFRAME.registerComponent('net-viz', {
 
           let lat_scale = d3.scaleLinear(this.extents.x,[-90, 90]);
           let long_scale = d3.scaleLinear(this.extents.x,[-180, 180]);
+          let radius_scale = d3.scaleSqrt(this.filters.domains.size, this.data.node_size_range);
+          let color_scale = d3.scaleLinear([0,0.5,1], this.data.node_color_range);
+          let categorical_color = d3.scaleOrdinal(d3.schemePaired);
 
           // Render nodes one by one
 
           Object.values(this.node_dict).map(node => {
 
               if(this.filter_node(node)){
-                  console.log("RENDER_NODES: PASA LA CONDICION", node);
+
+                  // Render node
+
+                  let node_position = this.convert(lat_scale(node.x), long_scale(node.y), this.data.radius);
+
+                  let my_node = document.createElement("a-sphere");
+
+                  my_node.setAttribute("position", node_position);
+                  my_node.setAttribute("color", node.color);
+                  // my_node.setAttribute("color", categorical_color(node.attributes["Modularity Class"]));
+                  my_node.setAttribute("radius", radius_scale(+node.attributes[this.data.size_attribute]));
+                  my_node.setAttribute("material", {shader: "flat", opacity: 0.7});
+
+                  this.el.appendChild(my_node);
+
               }
 
           });
