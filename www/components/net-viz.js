@@ -9,9 +9,10 @@ AFRAME.registerComponent('net-viz', {
           size_attribute: {type: 'string', default: "Degree"},
           node_size_range: {type: 'array', default: [0.01, 0.10]},
           node_color_range: {type: 'array', default: ["#F00", "#FFF", "#00F"]},
+          num_points: {type: 'int', default: 10},
+
           max_depth: {type: 'number', default: 2},
           bottom_radius: {type: 'number', default: 1},
-          num_points: {type: 'int', default: 100},
           transition: {type: 'int', default: 1000},
           text_color: {type: 'string', default: "white"},
           branch_color: {type: 'string', default: "#345678"},
@@ -100,15 +101,70 @@ AFRAME.registerComponent('net-viz', {
 
       },
 
+      render_edges: function(){
+
+          let lat_scale = d3.scaleLinear(this.extents.x,[-90, 90]);
+          let long_scale = d3.scaleLinear(this.extents.y,[-180, 180]);
+
+
+          this.net_data.edges.map(edge => {
+
+              // If both source and target are filtered in: draw the edge
+
+              if((edge.source.id in this.filtered_nodes) && (edge.target.id in this.filtered_nodes)){
+
+
+                  console.log("==============LATLONG==============", edge.source, edge.target);
+
+                  let init_lat = lat_scale(edge.source.y);
+                  let init_long = long_scale(edge.source.x);
+
+                  let end_lat = lat_scale(edge.target.y);
+                  let end_long = long_scale(edge.target.x);
+
+                  let lat_points_scale = d3.scaleLinear([0,this.data.num_points - 1], [init_lat, end_lat]);
+                  let long_points_scale = d3.scaleLinear([0,this.data.num_points - 1], [init_long, end_long]);
+
+                  let path_points = [];
+
+                  for(let i=0; i<this.data.num_points; i++){
+                      console.log("LATLONG", init_lat, init_long, end_lat, end_long, lat_points_scale(i), long_points_scale(i));
+
+                      path_points.push(this.convert(lat_points_scale(i), long_points_scale(i), this.data.radius));
+                  }
+
+                  console.log("PATH POINTS", path_points);
+
+                  let line = document.createElement("a-entity");
+
+                  line.setAttribute("meshline", {
+                      lineWidth: 0.025,
+                      opacity: 0.25,
+                      color: edge.color,
+                      transparent: true,
+                      path: path_points.map(AFRAME.utils.coordinates.stringify).join(",")
+                  });
+
+                  this.el.appendChild(line);
+
+              }
+
+          });
+      },
+
       render_nodes: function(){
 
           console.log("RENDER_NODES", this.extents);
 
           let lat_scale = d3.scaleLinear(this.extents.x,[-90, 90]);
-          let long_scale = d3.scaleLinear(this.extents.x,[-180, 180]);
+          let long_scale = d3.scaleLinear(this.extents.y,[-180, 180]);
           let radius_scale = d3.scaleSqrt(this.filters.domains.size, this.data.node_size_range);
           let color_scale = d3.scaleLinear([0,0.5,1], this.data.node_color_range);
           let categorical_color = d3.scaleOrdinal(d3.schemePaired);
+
+          // Reset filtered node list
+
+          this.filtered_nodes = {};
 
           // Render nodes one by one
 
@@ -118,7 +174,7 @@ AFRAME.registerComponent('net-viz', {
 
                   // Render node
 
-                  let node_position = this.convert(lat_scale(node.x), long_scale(node.y), this.data.radius);
+                  let node_position = this.convert(lat_scale(node.y), long_scale(node.x), this.data.radius);
 
                   let my_node = document.createElement("a-sphere");
 
@@ -129,6 +185,8 @@ AFRAME.registerComponent('net-viz', {
                   my_node.setAttribute("material", {shader: "flat", opacity: 0.7});
 
                   this.el.appendChild(my_node);
+
+                  this.filtered_nodes[node.id] = true;
 
               }
 
@@ -149,6 +207,10 @@ AFRAME.registerComponent('net-viz', {
           // This object will hold nodes keyed by id
 
           this.node_dict = {};
+
+          // This one, nodes finally rendered
+
+          this.filtered_nodes = {};
 
           // Load new data
 
@@ -185,6 +247,10 @@ AFRAME.registerComponent('net-viz', {
             console.log("UPDATE: Have cooked data");
 
             this.render_nodes();
+
+            console.log("NUMBER OF RENDERED NODES ", Object.keys(this.filtered_nodes).length);
+
+            this.render_edges();
         }
 
       },
