@@ -7,7 +7,7 @@ AFRAME.registerComponent('net-viz', {
           radius: {type: 'number', default: 10},
           initial_min_degree: {type: 'number', default: 50},
           size_attribute: {type: 'string', default: "Degree"},
-          node_size_range: {type: 'array', default: [0.01, 0.10]},
+          node_size_range: {type: 'array', default: [0.01, 1]},
           node_color_range: {type: 'array', default: ["#F00", "#FFF", "#00F"]},
           num_points: {type: 'int', default: 10},
 
@@ -106,6 +106,11 @@ AFRAME.registerComponent('net-viz', {
           let lat_scale = d3.scaleLinear(this.extents.x,[-90, 90]);
           let long_scale = d3.scaleLinear(this.extents.y,[-180, 180]);
 
+          let width_scale = d3.scaleLinear([this.filters.values.degree[0], this.filters.values.degree[1]], [0, 0.25]);
+
+          let opacity_scale = d3.scaleLinear([this.filters.values.degree[0], this.filters.values.degree[1]], [0, 1]);
+
+          this.rendered_edges = 0;
 
           this.net_data.edges.map(edge => {
 
@@ -113,39 +118,42 @@ AFRAME.registerComponent('net-viz', {
 
               if((edge.source.id in this.filtered_nodes) && (edge.target.id in this.filtered_nodes)){
 
+                  // Average degree for line width calculation
 
-                  console.log("==============LATLONG==============", edge.source, edge.target);
+                  let average_degree = (+edge.source.attributes.Degree + +edge.target.attributes.Degree)/2;
 
-                  let init_lat = lat_scale(edge.source.y);
-                  let init_long = long_scale(edge.source.x);
+                  if(average_degree > 50) {
 
-                  let end_lat = lat_scale(edge.target.y);
-                  let end_long = long_scale(edge.target.x);
+                      let init_lat = lat_scale(edge.source.y);
+                      let init_long = long_scale(edge.source.x);
 
-                  let lat_points_scale = d3.scaleLinear([0,this.data.num_points - 1], [init_lat, end_lat]);
-                  let long_points_scale = d3.scaleLinear([0,this.data.num_points - 1], [init_long, end_long]);
+                      let end_lat = lat_scale(edge.target.y);
+                      let end_long = long_scale(edge.target.x);
 
-                  let path_points = [];
+                      let lat_points_scale = d3.scaleLinear([0, this.data.num_points - 1], [init_lat, end_lat]);
+                      let long_points_scale = d3.scaleLinear([0, this.data.num_points - 1], [init_long, end_long]);
 
-                  for(let i=0; i<this.data.num_points; i++){
-                      console.log("LATLONG", init_lat, init_long, end_lat, end_long, lat_points_scale(i), long_points_scale(i));
+                      let path_points = [];
 
-                      path_points.push(this.convert(lat_points_scale(i), long_points_scale(i), this.data.radius));
+                      for (let i = 0; i < this.data.num_points; i++) {
+
+                          path_points.push(this.convert(lat_points_scale(i), long_points_scale(i), this.data.radius));
+                      }
+
+                      let line = document.createElement("a-entity");
+
+                      line.setAttribute("meshline", {
+                          lineWidth: width_scale(average_degree),
+                          opacity: opacity_scale(average_degree),
+                          color: edge.color,
+                          transparent: true,
+                          path: path_points.map(AFRAME.utils.coordinates.stringify).join(",")
+                      });
+
+                      this.el.appendChild(line);
+
+                      this.rendered_edges++;
                   }
-
-                  console.log("PATH POINTS", path_points);
-
-                  let line = document.createElement("a-entity");
-
-                  line.setAttribute("meshline", {
-                      lineWidth: 0.025,
-                      opacity: 0.25,
-                      color: edge.color,
-                      transparent: true,
-                      path: path_points.map(AFRAME.utils.coordinates.stringify).join(",")
-                  });
-
-                  this.el.appendChild(line);
 
               }
 
@@ -154,11 +162,9 @@ AFRAME.registerComponent('net-viz', {
 
       render_nodes: function(){
 
-          console.log("RENDER_NODES", this.extents);
-
           let lat_scale = d3.scaleLinear(this.extents.x,[-90, 90]);
           let long_scale = d3.scaleLinear(this.extents.y,[-180, 180]);
-          let radius_scale = d3.scaleSqrt(this.filters.domains.size, this.data.node_size_range);
+          let radius_scale = d3.scaleSqrt([this.filters.values.degree[0], this.filters.values.degree[1]], this.data.node_size_range);
           let color_scale = d3.scaleLinear([0,0.5,1], this.data.node_color_range);
           let categorical_color = d3.scaleOrdinal(d3.schemePaired);
 
@@ -251,6 +257,9 @@ AFRAME.registerComponent('net-viz', {
             console.log("NUMBER OF RENDERED NODES ", Object.keys(this.filtered_nodes).length);
 
             this.render_edges();
+
+            console.log("NUMBER OF RENDERED EDGES ", this.rendered_edges);
+
         }
 
       },

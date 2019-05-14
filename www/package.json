@@ -6,6 +6,7 @@
   "scripts": {
     "start": "npx parcel index.html",
     "build": "npx parcel build index.html --public-url ./",
+    "watch": "npx parcel watch index.html --public-url ./",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Oscar Marin <oscar@outliers.es>",
