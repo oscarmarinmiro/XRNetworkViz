@@ -1,6 +1,6 @@
 import * as d3 from "d3"
 
-AFRAME.registerComponent('net-viz', {
+AFRAME.registerComponent('net-viz-texture', {
 
       schema: {
           data: {type: 'string', default: ""},
@@ -11,18 +11,12 @@ AFRAME.registerComponent('net-viz', {
           node_color_range: {type: 'array', default: ["#F00", "#FFF", "#00F"]},
           num_points: {type: 'int', default: 10},
 
-          max_depth: {type: 'number', default: 2},
-          bottom_radius: {type: 'number', default: 1},
-          transition: {type: 'int', default: 1000},
-          text_color: {type: 'string', default: "white"},
-          branch_color: {type: 'string', default: "#345678"},
-          frame_text_color: {type: 'string', default:"black"},
-          frame_background_color: {type: 'string', default:"white"},
-
       },
       // Make some data transforms to ease up later real-time data processing on the network
 
       prepare_data: function(){
+
+          console.log("PREPARING DATA");
 
           this.filters = {'values': {degree:[], size: []}, 'domains': {degree: [], size: []}};
 
@@ -186,7 +180,6 @@ AFRAME.registerComponent('net-viz', {
 
                   my_node.setAttribute("position", node_position);
                   my_node.setAttribute("color", node.color);
-                  // my_node.setAttribute("color", categorical_color(node.attributes["Modularity Class"]));
                   my_node.setAttribute("radius", radius_scale(+node.attributes[this.data.size_attribute]));
                   my_node.setAttribute("material", {shader: "flat", opacity: 0.7});
 
